@@ -12,7 +12,7 @@ RUN wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/s
  && wget https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.32-r0/glibc-2.32-r0.apk \
  && apk --no-cache add -q glibc-2.32-r0.apk && rm -f glibc-2.32-r0.apk
 
-RUN apk --no-cache add -q perl wget xz tar fontconfig-dev \
+RUN apk --no-cache add -q perl xz tar fontconfig-dev \
  && mkdir -p /tmp/src/install-tl-unx \
  && wget -qO- $TEXLIVE_REPOGITORY/install-tl-unx.tar.gz | \
     tar -xz -C /tmp/src/install-tl-unx --strip-components=1 \
@@ -33,7 +33,7 @@ RUN apk --no-cache add -q perl wget xz tar fontconfig-dev \
       luatexbase ctablestack fontspec luaotfload lualatex-math \
       sourcesanspro sourcecodepro \
  && rm -Rf /tmp/src \
- && apk --no-cache del xz tar fontconfig-dev
+ && apk --no-cache del fontconfig-dev
 
 # Install Pandoc
 ENV PANDOC_VERSION 2.11.2
@@ -57,19 +57,24 @@ RUN apk --no-cache add -q \
  && curl -fsSL "$PANDOC_DOWNLOAD_URL" -o pandoc.tar.gz \
  && echo "$PANDOC_DOWNLOAD_SHA512  pandoc.tar.gz" sha512sum -c - \
  && tar -xzf pandoc.tar.gz --strip=1 && rm -f pandoc.tar.gz \
- && ( cabal update && cabal install --only-dependencies \
-    && cabal configure --prefix=$PANDOC_ROOT \
-    && cabal build \
-    && cabal copy \
-    && cd .. ) \
+ && cabal new-update \
+ && cabal install --only-dependencies \
+ && cabal configure --prefix=$PANDOC_ROOT \
+ && cabal new-build --disable-tests\
+ && find dist-newstyle \
+   -name 'pandoc*' -type f -perm -u+x \
+   -exec strip '{}' ';' \
+   -exec cp '{}' ${PANDOC_ROOT} ';' \
  && apk del --purge build-dependencies \
  && rm -Rf /root/.cabal/ /root/.ghc/ \
  && cd / && rm -Rf /pandoc-build
 
-# install pandoc-crossref
+# Install pandoc-crossref
+# export PANDOC_CROSSREF_VERSION=v0.3.8.4
 ENV PANDOC_CROSSREF_VERSION v0.3.8.4
-RUN wget https://github.com/lierdakil/pandoc-crossref/releases/download/${PANDOC_CROSSREF_VERSION}/pandoc-crossref-Linux.tar.xz -q -O - | tar xz \
- && mv pandoc-crossref /usr/bin/
+RUN wget https://github.com/lierdakil/pandoc-crossref/releases/download/${PANDOC_CROSSREF_VERSION}/pandoc-crossref-Linux.tar.xz -q -O - | tar Jxz \
+ && mv pandoc-crossref /usr/bin/ \
+ && rm -f pandoc-crossref.1
 
 VOLUME ["/workspace", "/root/.pandoc/templates"]
 WORKDIR /workspace
