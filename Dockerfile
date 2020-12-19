@@ -4,15 +4,15 @@ LABEL MAINTAINER "ishibashi.futoshi <ishibashi.futos@outlook.com>"
 LABEL DESCRIPTION "Pandoc for Japanese based on Alpine Linux."
 LABEL REFERENCE "https://github.com/Kumassy/docker-alpine-pandoc-ja"
 
+# Install Tex Live
 ENV TEXLIVE_VERSION 2019
 ENV TEXLIVE_REPOGITORY http://ftp.math.utah.edu/pub/tex/historic/systems/texlive/$TEXLIVE_VERSION/tlnet-final/
 ENV PATH /usr/local/texlive/$TEXLIVE_VERSION/bin/x86_64-linuxmusl:$PATH
 
 RUN wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub \
  && wget https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.32-r0/glibc-2.32-r0.apk \
- && apk --no-cache add -q glibc-2.32-r0.apk && rm -f glibc-2.32-r0.apk
-
-RUN apk --no-cache add -q perl xz tar fontconfig-dev \
+ && apk --no-cache add -q glibc-2.32-r0.apk && rm -f glibc-2.32-r0.apk \
+ && apk --no-cache add -q perl xz tar wget fontconfig-dev \
  && mkdir -p /tmp/src/install-tl-unx \
  && wget -qO- $TEXLIVE_REPOGITORY/install-tl-unx.tar.gz | \
     tar -xz -C /tmp/src/install-tl-unx --strip-components=1 \
@@ -60,19 +60,18 @@ RUN apk --no-cache add -q \
  && cabal new-update \
  && cabal install --only-dependencies \
  && cabal configure --prefix=$PANDOC_ROOT \
- && cabal new-build --disable-tests\
- && find dist-newstyle \
-   -name 'pandoc*' -type f -perm -u+x \
+ && cabal new-build --disable-tests \
+ && mkdir -p $PANDOC_ROOT/bin \
+ && find dist-newstyle -name 'pandoc*' -type f -perm -u+x \
    -exec strip '{}' ';' \
-   -exec cp '{}' ${PANDOC_ROOT} ';' \
+   -exec cp '{}' ${PANDOC_ROOT}/bin ';' \
  && apk del --purge build-dependencies \
  && rm -Rf /root/.cabal/ /root/.ghc/ \
  && cd / && rm -Rf /pandoc-build
 
 # Install pandoc-crossref
-# export PANDOC_CROSSREF_VERSION=v0.3.8.4
 ENV PANDOC_CROSSREF_VERSION v0.3.8.4
-RUN wget https://github.com/lierdakil/pandoc-crossref/releases/download/${PANDOC_CROSSREF_VERSION}/pandoc-crossref-Linux.tar.xz -q -O - | tar Jxz \
+RUN wget https://github.com/lierdakil/pandoc-crossref/releases/download/${PANDOC_CROSSREF_VERSION}/pandoc-crossref-Linux.tar.xz -q -O - | tar -Jx \
  && mv pandoc-crossref /usr/bin/ \
  && rm -f pandoc-crossref.1
 
